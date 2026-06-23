@@ -1390,19 +1390,32 @@ ImageInfo scan(const fs::path &url)
 // FSDevice proxy
 //
 
+#include <memory>
+
+@interface FileSystemProxy ()
+{
+    std::unique_ptr<Volume> _volume;
+    std::unique_ptr<FileSystem> _fs;
+}
+
+- (instancetype)initWithVolume:(std::unique_ptr<Volume>)vol fileSystem:(std::unique_ptr<FileSystem>)fs;
+
+@end
+
 @implementation FileSystemProxy
+
+- (instancetype)initWithVolume:(std::unique_ptr<Volume>)vol fileSystem:(std::unique_ptr<FileSystem>)fs
+{
+    if (self = [super init]) {
+        _volume = std::move(vol);
+        _fs = std::move(fs);
+    }
+    return self;
+}
 
 - (FileSystem *)fs
 {
-    return (FileSystem *)obj;
-}
-
-+ (instancetype)make:(FileSystem *)volume
-{
-    if (volume == nullptr) { return nil; }
-    
-    FileSystemProxy *proxy = [[self alloc] initWith: volume];
-    return proxy;
+    return _fs.get();
 }
 
 + (instancetype)makeWithImage:(FloppyDiskImageProxy *)proxy exception:(ExceptionWrapper *)ex
@@ -1413,9 +1426,9 @@ ImageInfo scan(const fs::path &url)
 
         if (auto* adf = dynamic_cast<ADFFile *>(base)) {
 
-            auto *vol = new Volume(*adf); // MEMORY LEAK!
-            auto *fs = new FileSystem(*vol);
-            return [self make:fs];
+            auto vol = std::make_unique<Volume>(*adf);
+            auto fs = std::make_unique<FileSystem>(*vol);
+            return [[self alloc] initWithVolume:std::move(vol) fileSystem:std::move(fs)];
         }
 
         throw IOError(IOError::FILE_TYPE_UNSUPPORTED);
@@ -1436,9 +1449,9 @@ ImageInfo scan(const fs::path &url)
 
         if (auto* hdf = dynamic_cast<HDFFile *>(base)) {
 
-            auto *vol = new Volume(*hdf, hdf->partition(nr)); // MEMORY LEAK!
-            auto *fs = new FileSystem(*vol);
-            return [self make:fs];
+            auto vol = std::make_unique<Volume>(*hdf, hdf->partition(nr));
+            auto fs = std::make_unique<FileSystem>(*vol);
+            return [[self alloc] initWithVolume:std::move(vol) fileSystem:std::move(fs)];
         }
 
         throw IOError(IOError::FILE_TYPE_UNSUPPORTED);

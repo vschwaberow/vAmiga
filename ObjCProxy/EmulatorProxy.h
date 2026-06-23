@@ -805,7 +805,7 @@ ImageInfo scan(const fs::path &url);
 // FileSystem
 //
 
-@interface FileSystemProxy : Proxy { }
+@interface FileSystemProxy : NSObject { }
 
 + (instancetype)makeWithImage:(FloppyDiskImageProxy *)proxy exception:(ExceptionWrapper *)ex;
 + (instancetype)makeWithImage:(HardDiskImageProxy *)proxy partition:(NSInteger)nr exception:(ExceptionWrapper *)ex;
